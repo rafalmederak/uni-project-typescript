@@ -1,35 +1,50 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+import React, { useState, useEffect } from 'react';
+import ProjectList from './components/ProjectList';
+import ProjectForm from './components/ProjectForm';
+import ProjectService from './services/ProjectService';
+import { Project } from './interfaces/Project';
 
-function App() {
-  const [count, setCount] = useState(0)
+const App: React.FC = () => {
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [editingProject, setEditingProject] = useState<Project | undefined>(
+    undefined
+  );
+
+  useEffect(() => {
+    setProjects(ProjectService.getProjects());
+  }, []);
+
+  const handleSaveProject = (project: Project) => {
+    if (editingProject) {
+      ProjectService.updateProject(project);
+      setEditingProject(undefined);
+    } else {
+      ProjectService.createProject(project);
+    }
+    setProjects(ProjectService.getProjects());
+  };
+
+  const handleDeleteProject = (id: string) => {
+    ProjectService.deleteProject(id);
+    setProjects(ProjectService.getProjects());
+    setEditingProject(undefined);
+  };
+
+  const handleEditProject = (project: Project) => {
+    setEditingProject(project);
+  };
 
   return (
-    <>
-      <div>
-        <a href="https://vitejs.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.tsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
-  )
-}
+    <div className="container mx-auto p-4">
+      <h1 className="text-2xl font-bold mb-4">Project Management</h1>
+      <ProjectForm project={editingProject} onSave={handleSaveProject} />
+      <ProjectList
+        projects={projects}
+        onDelete={handleDeleteProject}
+        onEdit={handleEditProject}
+      />
+    </div>
+  );
+};
 
-export default App
+export default App;
