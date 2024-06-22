@@ -1,0 +1,62 @@
+import React, { useState } from 'react';
+import axios from 'axios';
+
+interface LoginFormProps {
+  onLogin: (token: string, refreshToken: string) => void;
+}
+
+const LoginForm: React.FC<LoginFormProps> = ({ onLogin }) => {
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    try {
+      const response = await axios.post('http://localhost:3000/login', {
+        username,
+        password,
+      });
+      onLogin(response.data.token, response.data.refreshToken);
+      setError('');
+    } catch (err) {
+      setError('Invalid login credentials');
+    }
+  };
+
+  return (
+    <form
+      onSubmit={handleSubmit}
+      className="max-w-md mx-auto p-4 border rounded shadow-md"
+    >
+      <h2 className="text-xl font-bold mb-4">Login</h2>
+      {error && <div className="text-red-500 mb-4">{error}</div>}
+      <div className="mb-4">
+        <label className="block text-sm font-bold mb-2">Username</label>
+        <input
+          type="text"
+          value={username}
+          onChange={(e) => setUsername(e.target.value)}
+          className="w-full p-2 border rounded"
+        />
+      </div>
+      <div className="mb-4">
+        <label className="block text-sm font-bold mb-2">Password</label>
+        <input
+          type="password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          className="w-full p-2 border rounded"
+        />
+      </div>
+      <button
+        type="submit"
+        className="w-full p-2 bg-blue-500 text-white rounded"
+      >
+        Login
+      </button>
+    </form>
+  );
+};
+
+export default LoginForm;

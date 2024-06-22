@@ -7,11 +7,13 @@ import ActiveProjectSelector from './components/ActiveProjectSelector';
 import TaskForm from './components/TaskForm';
 import TaskDetails from './components/TaskDetails';
 import NavBar from './components/NavBar';
+import LoginForm from './components/LoginForm';
 import ProjectService from './services/ProjectService';
 import StoryService from './services/StoryService';
 import TaskService from './services/TaskService';
 import ActiveProjectService from './services/ActiveProjectService';
 import UserService from './services/UserService';
+import AuthService from './services/AuthService';
 import { Project } from './interfaces/Project';
 import { Story } from './interfaces/Story';
 import { Task } from './interfaces/Task';
@@ -32,27 +34,35 @@ const App: React.FC = () => {
   const [viewingTask, setViewingTask] = useState<Task | undefined>(undefined);
   const [activeProjectId, setActiveProjectId] = useState<string | null>(null);
   const [loggedInUser, setLoggedInUser] = useState<User | null>(null);
+  const [token, setToken] = useState<string | null>(
+    localStorage.getItem('token')
+  );
+  const [refreshToken, setRefreshToken] = useState<string | null>(
+    localStorage.getItem('refreshToken')
+  );
 
   useEffect(() => {
-    UserService.mockUsers();
-    UserService.mockLoggedInUser();
-    setLoggedInUser(UserService.getLoggedInUser());
-    setProjects(ProjectService.getProjects());
-    setUsers(UserService.getUsers());
-    const savedActiveProjectId = ActiveProjectService.getActiveProject();
-    setActiveProjectId(savedActiveProjectId);
-    if (savedActiveProjectId) {
-      const filteredStories = StoryService.getStories().filter(
-        (story) => story.projectId === savedActiveProjectId
-      );
-      setStories(filteredStories);
-      setTasks(
-        TaskService.getTasks().filter((task) =>
-          filteredStories.some((story) => story.id === task.storyId)
-        )
-      );
+    if (token) {
+      UserService.mockUsers();
+      UserService.mockLoggedInUser();
+      setLoggedInUser(UserService.getLoggedInUser());
+      setProjects(ProjectService.getProjects());
+      setUsers(UserService.getUsers());
+      const savedActiveProjectId = ActiveProjectService.getActiveProject();
+      setActiveProjectId(savedActiveProjectId);
+      if (savedActiveProjectId) {
+        const filteredStories = StoryService.getStories().filter(
+          (story) => story.projectId === savedActiveProjectId
+        );
+        setStories(filteredStories);
+        setTasks(
+          TaskService.getTasks().filter((task) =>
+            filteredStories.some((story) => story.id === task.storyId)
+          )
+        );
+      }
     }
-  }, []);
+  }, [token]);
 
   useEffect(() => {
     if (activeProjectId) {
@@ -67,6 +77,22 @@ const App: React.FC = () => {
       );
     }
   }, [activeProjectId]);
+
+  useEffect(() => {
+    const interval = setInterval(async () => {
+      if (refreshToken) {
+        try {
+          const newToken = await AuthService.refreshToken();
+          setToken(newToken);
+        } catch (err) {
+          console.error('Failed to refresh token:', err);
+          handleLogout();
+        }
+      }
+    }, 15 * 60 * 1000); // co 15 minut odświezenie tokenu
+
+    return () => clearInterval(interval);
+  }, [refreshToken]);
 
   const handleSaveProject = (project: Project) => {
     if (editingProject) {
@@ -184,6 +210,20 @@ const App: React.FC = () => {
     setViewingTask(undefined);
   };
 
+  const handleLogin = (token: string, refreshToken: string) => {
+    setToken(token);
+    setRefreshToken(refreshToken);
+    localStorage.setItem('token', token);
+    localStorage.setItem('refreshToken', refreshToken);
+  };
+
+  const handleLogout = () => {
+    setToken(null);
+    setRefreshToken(null);
+    localStorage.removeItem('token');
+    localStorage.removeItem('refreshToken');
+  };
+
   const renderTaskCard = (task: Task) => (
     <div key={task.id} className="bg-white p-4 rounded shadow mb-4">
       <h3 className="text-lg font-bold">{task.name}</h3>
@@ -221,11 +261,21 @@ const App: React.FC = () => {
     </div>
   );
 
+  if (!token) {
+    return <LoginForm onLogin={handleLogin} />;
+  }
+
   return (
     <div>
       <NavBar loggedInUser={loggedInUser} />
       <div className="container mx-auto p-4">
         <h1 className="text-2xl font-bold mb-4">Project Management</h1>
+        <button
+          onClick={handleLogout}
+          className="mb-4 p-2 bg-red-500 text-white rounded"
+        >
+          Logout
+        </button>
         <div className="mb-4">
           <ProjectForm project={editingProject} onSave={handleSaveProject} />
           <ProjectList
