@@ -1,3 +1,25 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+body {
+  @apply bg-white dark:bg-gray-800;
+}
+
+.container {
+  @apply text-black dark:text-white;
+}
+
+.navbar {
+  @apply bg-gray-800 dark:bg-gray-900;
+}
+
+.button {
+  @apply bg-gray-300 dark:bg-gray-700;
+}
+
+input,
+textarea,
+select {
+  @apply bg-white dark:bg-gray-800 text-black dark:text-white border-gray-300 dark:border-gray-700;
+}

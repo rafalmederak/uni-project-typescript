@@ -225,7 +225,10 @@ const App: React.FC = () => {
   };
 
   const renderTaskCard = (task: Task) => (
-    <div key={task.id} className="bg-white p-4 rounded shadow mb-4">
+    <div
+      key={task.id}
+      className="bg-white dark:bg-gray-800 p-4 rounded shadow mb-4"
+    >
       <h3 className="text-lg font-bold">{task.name}</h3>
       <p>{task.description}</p>
       <p>Priority: {task.priority}</p>
@@ -311,19 +314,19 @@ const App: React.FC = () => {
               />
             </div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="column bg-gray-100 p-4 rounded">
+              <div className="column bg-gray-100 dark:bg-gray-700 p-4 rounded">
                 <h2 className="text-xl font-bold mb-4">To Do</h2>
                 {tasks
                   .filter((task) => task.status === 'todo')
                   .map(renderTaskCard)}
               </div>
-              <div className="column bg-gray-100 p-4 rounded">
+              <div className="column bg-gray-100 dark:bg-gray-700 p-4 rounded">
                 <h2 className="text-xl font-bold mb-4">In Progress</h2>
                 {tasks
                   .filter((task) => task.status === 'in progress')
                   .map(renderTaskCard)}
               </div>
-              <div className="column bg-gray-100 p-4 rounded">
+              <div className="column bg-gray-100 dark:bg-gray-700 p-4 rounded">
                 <h2 className="text-xl font-bold mb-4">Done</h2>
                 {tasks
                   .filter((task) => task.status === 'done')
