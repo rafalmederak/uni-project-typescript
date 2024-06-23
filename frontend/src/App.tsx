@@ -15,6 +15,10 @@ import TaskService from './services/TaskService';
 import ActiveProjectService from './services/ActiveProjectService';
 import UserService from './services/UserService';
 import AuthService from './services/AuthService';
+import NotificationService from './services/NotificationService';
+import UnreadNotificationCounter from './components/UnreadNotificationCounter';
+import NotificationList from './components/NotificationList';
+import NotificationDialog from './components/NotificationDialog';
 import { Project } from './interfaces/Project';
 import { Story } from './interfaces/Story';
 import { Task } from './interfaces/Task';
@@ -225,6 +229,17 @@ const App: React.FC = () => {
       updatedTasks.filter((t) => stories.some((s) => s.id === t.storyId))
     );
     setViewingTask(undefined);
+
+    const user = await UserService.getUserById(userId);
+    if (user) {
+      NotificationService.send({
+        title: 'Task Assigned',
+        message: `You have been assigned a new task: ${task.name}`,
+        date: new Date().toISOString(),
+        priority: 'medium',
+        read: false,
+      });
+    }
   };
 
   const handleCompleteTask = async (task: Task) => {
@@ -356,6 +371,7 @@ const App: React.FC = () => {
   return (
     <div>
       <NavBar loggedInUser={loggedInUser} />
+      <UnreadNotificationCounter />
       <div className="container mx-auto p-4">
         <h1 className="text-2xl font-bold mb-4">Project Management</h1>
         <button
@@ -431,6 +447,8 @@ const App: React.FC = () => {
           </>
         )}
       </div>
+      <NotificationList />
+      <NotificationDialog />
     </div>
   );
 };

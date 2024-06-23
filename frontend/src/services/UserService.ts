@@ -28,7 +28,7 @@ class UserService {
 
   static async createUser(user: User): Promise<void> {
     const userDoc = doc(db, 'users', user.id).withConverter(userConverter);
-    await setDoc(userDoc, user); // Use setDoc instead of addDoc to specify the document ID
+    await setDoc(userDoc, user);
   }
 
   static async updateUser(user: User): Promise<void> {
