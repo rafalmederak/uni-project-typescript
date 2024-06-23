@@ -1,49 +1,80 @@
-import { BehaviorSubject, Observable } from 'rxjs';
-import { filter, map } from 'rxjs/operators';
+import { db } from '../firebaseConfig';
+import {
+  collection,
+  getDocs,
+  setDoc,
+  updateDoc,
+  deleteDoc,
+  doc,
+  query,
+  where,
+} from 'firebase/firestore';
+import { Notification } from '../interfaces/Notification';
+import { BehaviorSubject } from 'rxjs';
+import { v4 as uuidv4 } from 'uuid';
 
-type ISOString = string;
-
-type Notification = {
-  title: string;
-  message: string;
-  date: ISOString;
-  priority: 'low' | 'medium' | 'high';
-  read: boolean;
-};
+const notificationCollectionRef = collection(db, 'notifications');
+const archivedNotificationCollectionRef = collection(
+  db,
+  'archived_notifications'
+);
 
 class NotificationService {
-  private notificationsSubject: BehaviorSubject<Notification[]> =
-    new BehaviorSubject<Notification[]>([]);
-  private unreadCountSubject: BehaviorSubject<number> =
-    new BehaviorSubject<number>(0);
+  private notificationsSubject = new BehaviorSubject<Notification[]>([]);
+  private unreadCountSubject = new BehaviorSubject<number>(0);
 
-  send(notification: Notification): void {
-    const currentNotifications = this.notificationsSubject.value;
-    this.notificationsSubject.next([...currentNotifications, notification]);
+  constructor() {
+    this.loadNotifications();
+  }
+
+  private async loadNotifications() {
+    const querySnapshot = await getDocs(
+      query(notificationCollectionRef, where('read', '==', false))
+    );
+    const notifications = querySnapshot.docs.map(
+      (doc) =>
+        ({
+          id: doc.id,
+          ...doc.data(),
+        } as Notification)
+    );
+    this.notificationsSubject.next(notifications);
     this.updateUnreadCount();
   }
 
-  list(): Observable<Notification[]> {
+  private async updateUnreadCount() {
+    const querySnapshot = await getDocs(
+      query(notificationCollectionRef, where('read', '==', false))
+    );
+    this.unreadCountSubject.next(querySnapshot.size);
+  }
+
+  async send(notification: Notification) {
+    const id = uuidv4(); // Generowanie unikalnego identyfikatora
+    const notificationDoc = doc(notificationCollectionRef, id);
+    await setDoc(notificationDoc, { ...notification, id });
+    this.loadNotifications();
+  }
+
+  list() {
     return this.notificationsSubject.asObservable();
   }
 
-  unreadCount(): Observable<number> {
+  unreadCount() {
     return this.unreadCountSubject.asObservable();
   }
 
-  private updateUnreadCount(): void {
-    const unreadCount = this.notificationsSubject.value.filter(
-      (notification) => !notification.read
-    ).length;
-    this.unreadCountSubject.next(unreadCount);
-  }
-
-  markAsRead(notification: Notification): void {
-    notification.read = true;
-    this.updateUnreadCount();
+  async markAsRead(notification: Notification) {
+    const notificationDoc = doc(notificationCollectionRef, notification.id);
+    await updateDoc(notificationDoc, { read: true });
+    const archivedNotificationDoc = doc(
+      archivedNotificationCollectionRef,
+      notification.id
+    );
+    await setDoc(archivedNotificationDoc, notification);
+    await deleteDoc(notificationDoc);
+    this.loadNotifications();
   }
 }
 
-const notificationService = new NotificationService();
-export default notificationService;
-export type { Notification };
+export default new NotificationService();

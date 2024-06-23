@@ -16,9 +16,7 @@ import ActiveProjectService from './services/ActiveProjectService';
 import UserService from './services/UserService';
 import AuthService from './services/AuthService';
 import NotificationService from './services/NotificationService';
-import UnreadNotificationCounter from './components/UnreadNotificationCounter';
 import NotificationList from './components/NotificationList';
-import NotificationDialog from './components/NotificationDialog';
 import { Project } from './interfaces/Project';
 import { Story } from './interfaces/Story';
 import { Task } from './interfaces/Task';
@@ -230,9 +228,10 @@ const App: React.FC = () => {
     );
     setViewingTask(undefined);
 
-    const user = await UserService.getUserById(userId);
-    if (user) {
+    // Emit a notification
+    if (userId === loggedInUser?.id) {
       NotificationService.send({
+        id: '',
         title: 'Task Assigned',
         message: `You have been assigned a new task: ${task.name}`,
         date: new Date().toISOString(),
@@ -338,117 +337,124 @@ const App: React.FC = () => {
     </div>
   );
 
-  if (!token) {
-    return showRegister ? (
-      <div>
-        <RegisterForm onRegister={handleRegister} />
-        <p className="mt-4">
-          Already have an account?{' '}
-          <button
-            onClick={() => setShowRegister(false)}
-            className="text-blue-500"
-          >
-            Login
-          </button>
-        </p>
-      </div>
-    ) : (
-      <div>
-        <LoginForm onLogin={handleLogin} />
-        <p className="mt-4">
-          Don't have an account?{' '}
-          <button
-            onClick={() => setShowRegister(true)}
-            className="text-blue-500"
-          >
-            Register
-          </button>
-        </p>
-      </div>
-    );
-  }
-
   return (
     <div>
-      <NavBar loggedInUser={loggedInUser} />
-      <UnreadNotificationCounter />
-      <div className="container mx-auto p-4">
-        <h1 className="text-2xl font-bold mb-4">Project Management</h1>
-        <button
-          onClick={handleLogout}
-          className="mb-4 p-2 bg-red-500 text-white rounded"
-        >
-          Logout
-        </button>
-        <div className="mb-4">
-          <ProjectForm project={editingProject} onSave={handleSaveProject} />
-          <ProjectList
-            projects={projects}
-            onDelete={handleDeleteProject}
-            onEdit={handleEditProject}
-          />
-        </div>
-        <div className="mb-4">
-          <ActiveProjectSelector
-            projects={projects}
-            activeProjectId={activeProjectId}
-            onSelect={handleSetActiveProject}
-          />
-        </div>
-        {activeProjectId && (
-          <>
+      {!token ? (
+        showRegister ? (
+          <div>
+            <RegisterForm onRegister={handleRegister} />
+            <p className="mt-4">
+              Already have an account?{' '}
+              <button
+                onClick={() => setShowRegister(false)}
+                className="text-blue-500"
+              >
+                Login
+              </button>
+            </p>
+          </div>
+        ) : (
+          <div>
+            <LoginForm onLogin={handleLogin} />
+            <p className="mt-4">
+              Don't have an account?{' '}
+              <button
+                onClick={() => setShowRegister(true)}
+                className="text-blue-500"
+              >
+                Register
+              </button>
+            </p>
+          </div>
+        )
+      ) : (
+        <>
+          <NavBar loggedInUser={loggedInUser} />
+          <NotificationList />
+          <div className="container mx-auto p-4">
+            <h1 className="text-2xl font-bold mb-4">Project Management</h1>
+            <button
+              onClick={handleLogout}
+              className="mb-4 p-2 bg-red-500 text-white rounded"
+            >
+              Logout
+            </button>
             <div className="mb-4">
-              <h2 className="text-xl font-bold mt-4">Active Project Stories</h2>
-              <StoryForm story={editingStory} onSave={handleSaveStory} />
-              <StoryList
-                stories={stories}
-                onDelete={handleDeleteStory}
-                onEdit={handleEditStory}
+              <ProjectForm
+                project={editingProject}
+                onSave={handleSaveProject}
+              />
+              <ProjectList
+                projects={projects}
+                onDelete={handleDeleteProject}
+                onEdit={handleEditProject}
               />
             </div>
             <div className="mb-4">
-              <h2 className="text-xl font-bold mt-4">Active Project Tasks</h2>
-              <TaskForm
-                task={editingTask}
-                stories={stories}
-                onSave={handleSaveTask}
+              <ActiveProjectSelector
+                projects={projects}
+                activeProjectId={activeProjectId}
+                onSelect={handleSetActiveProject}
               />
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="column bg-gray-100 dark:bg-gray-700 p-4 rounded">
-                <h2 className="text-xl font-bold mb-4">To Do</h2>
-                {tasks
-                  .filter((task) => task.status === 'todo')
-                  .map(renderTaskCard)}
-              </div>
-              <div className="column bg-gray-100 dark:bg-gray-700 p-4 rounded">
-                <h2 className="text-xl font-bold mb-4">In Progress</h2>
-                {tasks
-                  .filter((task) => task.status === 'in progress')
-                  .map(renderTaskCard)}
-              </div>
-              <div className="column bg-gray-100 dark:bg-gray-700 p-4 rounded">
-                <h2 className="text-xl font-bold mb-4">Done</h2>
-                {tasks
-                  .filter((task) => task.status === 'done')
-                  .map(renderTaskCard)}
-              </div>
-            </div>
-            {viewingTask && (
-              <TaskDetails
-                task={viewingTask}
-                project={projects.find((p) => p.id === activeProjectId)!}
-                story={stories.find((s) => s.id === viewingTask.storyId)!}
-                users={users}
-                onAssign={handleAssignTask}
-                onComplete={handleCompleteTask}
-              />
+            {activeProjectId && (
+              <>
+                <div className="mb-4">
+                  <h2 className="text-xl font-bold mt-4">
+                    Active Project Stories
+                  </h2>
+                  <StoryForm story={editingStory} onSave={handleSaveStory} />
+                  <StoryList
+                    stories={stories}
+                    onDelete={handleDeleteStory}
+                    onEdit={handleEditStory}
+                  />
+                </div>
+                <div className="mb-4">
+                  <h2 className="text-xl font-bold mt-4">
+                    Active Project Tasks
+                  </h2>
+                  <TaskForm
+                    task={editingTask}
+                    stories={stories}
+                    onSave={handleSaveTask}
+                  />
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="column bg-gray-100 dark:bg-gray-700 p-4 rounded">
+                    <h2 className="text-xl font-bold mb-4">To Do</h2>
+                    {tasks
+                      .filter((task) => task.status === 'todo')
+                      .map(renderTaskCard)}
+                  </div>
+                  <div className="column bg-gray-100 dark:bg-gray-700 p-4 rounded">
+                    <h2 className="text-xl font-bold mb-4">In Progress</h2>
+                    {tasks
+                      .filter((task) => task.status === 'in progress')
+                      .map(renderTaskCard)}
+                  </div>
+                  <div className="column bg-gray-100 dark:bg-gray-700 p-4 rounded">
+                    <h2 className="text-xl font-bold mb-4">Done</h2>
+                    {tasks
+                      .filter((task) => task.status === 'done')
+                      .map(renderTaskCard)}
+                  </div>
+                </div>
+                {viewingTask && (
+                  <TaskDetails
+                    task={viewingTask}
+                    project={projects.find((p) => p.id === activeProjectId)!}
+                    story={stories.find((s) => s.id === viewingTask.storyId)!}
+                    users={users}
+                    onAssign={handleAssignTask}
+                    onComplete={handleCompleteTask}
+                  />
+                )}
+              </>
             )}
-          </>
-        )}
-      </div>
-      <NotificationList />
-      <NotificationDialog />
+          </div>
+        </>
+      )}
     </div>
   );
 };
