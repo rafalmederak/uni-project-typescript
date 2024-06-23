@@ -1,56 +1,52 @@
+import { db } from '../firebaseConfig';
+import {
+  collection,
+  getDocs,
+  setDoc,
+  updateDoc,
+  deleteDoc,
+  doc,
+  getDoc,
+} from 'firebase/firestore';
 import { User } from '../interfaces/User';
+import { userConverter } from '../converters';
+import { auth } from '../firebaseConfig';
+
+const userCollectionRef = collection(db, 'users').withConverter(userConverter);
 
 class UserService {
-  private static readonly LOGGED_IN_USER_KEY = 'loggedInUser';
-  private static readonly USERS_KEY = 'users';
-
-  static getLoggedInUser(): User | null {
-    const user = localStorage.getItem(this.LOGGED_IN_USER_KEY);
-    return user ? JSON.parse(user) : null;
+  static async getUsers(): Promise<User[]> {
+    const querySnapshot = await getDocs(userCollectionRef);
+    return querySnapshot.docs.map((doc) => doc.data());
   }
 
-  static setLoggedInUser(user: User): void {
-    localStorage.setItem(this.LOGGED_IN_USER_KEY, JSON.stringify(user));
+  static async getUserById(userId: string): Promise<User | null> {
+    const userDoc = doc(db, 'users', userId).withConverter(userConverter);
+    const docSnapshot = await getDoc(userDoc);
+    return docSnapshot.exists() ? docSnapshot.data() : null;
   }
 
-  static mockLoggedInUser(): void {
-    const users = this.getUsers();
-    if (users.length > 0) {
-      this.setLoggedInUser(users[0]);
+  static async createUser(user: User): Promise<void> {
+    const userDoc = doc(db, 'users', user.id).withConverter(userConverter);
+    await setDoc(userDoc, user); // Use setDoc instead of addDoc to specify the document ID
+  }
+
+  static async updateUser(user: User): Promise<void> {
+    const userDoc = doc(db, 'users', user.id).withConverter(userConverter);
+    await updateDoc(userDoc, user);
+  }
+
+  static async deleteUser(id: string): Promise<void> {
+    const userDoc = doc(db, 'users', id).withConverter(userConverter);
+    await deleteDoc(userDoc);
+  }
+
+  static async getCurrentUser(): Promise<User | null> {
+    const currentUser = auth.currentUser;
+    if (currentUser) {
+      return this.getUserById(currentUser.uid);
     }
-  }
-
-  static getUsers(): User[] {
-    const users = localStorage.getItem(this.USERS_KEY);
-    return users ? JSON.parse(users) : [];
-  }
-
-  static setUsers(users: User[]): void {
-    localStorage.setItem(this.USERS_KEY, JSON.stringify(users));
-  }
-
-  static mockUsers(): void {
-    const mockUsers: User[] = [
-      {
-        id: '1',
-        firstName: 'Carlo',
-        lastName: 'Ancelotti',
-        role: 'admin',
-      },
-      {
-        id: '2',
-        firstName: 'Jose',
-        lastName: 'Mourinho',
-        role: 'developer',
-      },
-      {
-        id: '3',
-        firstName: 'Pep',
-        lastName: 'Guardiola',
-        role: 'devops',
-      },
-    ];
-    this.setUsers(mockUsers);
+    return null;
   }
 }
 

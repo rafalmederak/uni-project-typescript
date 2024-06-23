@@ -14,8 +14,17 @@ const StoryForm: React.FC<StoryFormProps> = ({ story, onSave }) => {
   const [description, setDescription] = useState('');
   const [priority, setPriority] = useState<'low' | 'medium' | 'high'>('medium');
   const [status, setStatus] = useState<'todo' | 'in progress' | 'done'>('todo');
+  const [ownerId, setOwnerId] = useState<string>('unknown');
 
   useEffect(() => {
+    const fetchCurrentUser = async () => {
+      const currentUser = await UserService.getCurrentUser();
+      if (currentUser) {
+        setOwnerId(currentUser.id);
+      }
+    };
+    fetchCurrentUser();
+
     if (story) {
       setName(story.name);
       setDescription(story.description);
@@ -33,7 +42,6 @@ const StoryForm: React.FC<StoryFormProps> = ({ story, onSave }) => {
     event.preventDefault();
     const id = story ? story.id : uuidv4();
     const creationDate = story ? story.creationDate : new Date().toISOString();
-    const ownerId = UserService.getLoggedInUser()?.id || 'unknown';
     const projectId = ActiveProjectService.getActiveProject() || 'unknown';
     onSave({
       id,

@@ -1,46 +1,45 @@
+import { db } from '../firebaseConfig';
+import {
+  collection,
+  getDocs,
+  addDoc,
+  updateDoc,
+  deleteDoc,
+  doc,
+  WithFieldValue,
+  DocumentReference,
+} from 'firebase/firestore';
 import { Project } from '../interfaces/Project';
+import { projectConverter } from '../converters';
+
+const projectCollectionRef = collection(db, 'projects').withConverter(
+  projectConverter
+);
 
 class ProjectService {
-  private static readonly STORAGE_KEY = 'projects';
-
-  static getProjects(): Project[] {
-    const projects = localStorage.getItem(this.STORAGE_KEY);
-    return projects ? JSON.parse(projects) : [];
+  static async getProjects(): Promise<Project[]> {
+    const querySnapshot = await getDocs(projectCollectionRef);
+    return querySnapshot.docs.map((doc) => doc.data());
   }
 
-  static saveProjects(projects: Project[]): void {
-    localStorage.setItem(this.STORAGE_KEY, JSON.stringify(projects));
+  static async createProject(
+    project: WithFieldValue<Project>
+  ): Promise<DocumentReference<Project>> {
+    const projectRef = await addDoc(projectCollectionRef, project);
+    await updateDoc(projectRef, { id: projectRef.id });
+    return projectRef;
   }
 
-  static createProject(project: Project): void {
-    const projects = this.getProjects();
-    projects.push(project);
-    this.saveProjects(projects);
+  static async updateProject(project: Project): Promise<void> {
+    const projectDoc = doc(db, 'projects', project.id).withConverter(
+      projectConverter
+    );
+    await updateDoc(projectDoc, project);
   }
 
-  static updateProject(updatedProject: Project): Project | null {
-    const projects = this.getProjects();
-    const index = projects.findIndex((p) => p.id === updatedProject.id);
-
-    if (index !== -1) {
-      projects[index] = updatedProject;
-      this.saveProjects(projects);
-      return updatedProject;
-    }
-
-    return null;
-  }
-
-  static deleteProject(id: string): boolean {
-    const projects = this.getProjects();
-    const filteredProjects = projects.filter((p) => p.id !== id);
-
-    if (projects.length !== filteredProjects.length) {
-      this.saveProjects(filteredProjects);
-      return true;
-    }
-
-    return false;
+  static async deleteProject(id: string): Promise<void> {
+    const projectDoc = doc(db, 'projects', id).withConverter(projectConverter);
+    await deleteDoc(projectDoc);
   }
 }
 

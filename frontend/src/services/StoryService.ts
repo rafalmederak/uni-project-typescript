@@ -1,46 +1,43 @@
+import { db } from '../firebaseConfig';
+import {
+  collection,
+  getDocs,
+  addDoc,
+  updateDoc,
+  deleteDoc,
+  doc,
+  WithFieldValue,
+  DocumentReference,
+} from 'firebase/firestore';
 import { Story } from '../interfaces/Story';
+import { storyConverter } from '../converters';
+
+const storyCollectionRef = collection(db, 'stories').withConverter(
+  storyConverter
+);
 
 class StoryService {
-  private static readonly STORAGE_KEY = 'stories';
-
-  static getStories(): Story[] {
-    const stories = localStorage.getItem(this.STORAGE_KEY);
-    return stories ? JSON.parse(stories) : [];
+  static async getStories(): Promise<Story[]> {
+    const querySnapshot = await getDocs(storyCollectionRef);
+    return querySnapshot.docs.map((doc) => doc.data());
   }
 
-  static saveStories(stories: Story[]): void {
-    localStorage.setItem(this.STORAGE_KEY, JSON.stringify(stories));
+  static async createStory(
+    story: WithFieldValue<Story>
+  ): Promise<DocumentReference<Story>> {
+    const storyRef = await addDoc(storyCollectionRef, story);
+    await updateDoc(storyRef, { id: storyRef.id });
+    return storyRef;
   }
 
-  static createStory(story: Story): void {
-    const stories = this.getStories();
-    stories.push(story);
-    this.saveStories(stories);
+  static async updateStory(story: Story): Promise<void> {
+    const storyDoc = doc(db, 'stories', story.id).withConverter(storyConverter);
+    await updateDoc(storyDoc, story);
   }
 
-  static updateStory(updatedStory: Story): Story | null {
-    const stories = this.getStories();
-    const index = stories.findIndex((s) => s.id === updatedStory.id);
-
-    if (index !== -1) {
-      stories[index] = updatedStory;
-      this.saveStories(stories);
-      return updatedStory;
-    }
-
-    return null;
-  }
-
-  static deleteStory(id: string): boolean {
-    const stories = this.getStories();
-    const filteredStories = stories.filter((s) => s.id !== id);
-
-    if (stories.length !== filteredStories.length) {
-      this.saveStories(filteredStories);
-      return true;
-    }
-
-    return false;
+  static async deleteStory(id: string): Promise<void> {
+    const storyDoc = doc(db, 'stories', id).withConverter(storyConverter);
+    await deleteDoc(storyDoc);
   }
 }
 

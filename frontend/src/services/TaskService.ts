@@ -1,47 +1,41 @@
+import { db } from '../firebaseConfig';
+import {
+  collection,
+  getDocs,
+  addDoc,
+  updateDoc,
+  deleteDoc,
+  doc,
+  WithFieldValue,
+  DocumentReference,
+} from 'firebase/firestore';
 import { Task } from '../interfaces/Task';
+import { taskConverter } from '../converters';
+
+const taskCollectionRef = collection(db, 'tasks').withConverter(taskConverter);
 
 class TaskService {
-  private static readonly STORAGE_KEY = 'tasks';
-
-  static getTasks(): Task[] {
-    const tasks = localStorage.getItem(this.STORAGE_KEY);
-    return tasks ? JSON.parse(tasks) : [];
+  static async getTasks(): Promise<Task[]> {
+    const querySnapshot = await getDocs(taskCollectionRef);
+    return querySnapshot.docs.map((doc) => doc.data());
   }
 
-  static saveTasks(tasks: Task[]): void {
-    localStorage.setItem(this.STORAGE_KEY, JSON.stringify(tasks));
+  static async createTask(
+    task: WithFieldValue<Task>
+  ): Promise<DocumentReference<Task>> {
+    const taskRef = await addDoc(taskCollectionRef, task);
+    await updateDoc(taskRef, { id: taskRef.id });
+    return taskRef;
   }
 
-  static createTask(task: Task): Task {
-    const tasks = this.getTasks();
-    tasks.push(task);
-    this.saveTasks(tasks);
-    return task;
+  static async updateTask(task: Task): Promise<void> {
+    const taskDoc = doc(db, 'tasks', task.id).withConverter(taskConverter);
+    await updateDoc(taskDoc, task);
   }
 
-  static updateTask(updatedTask: Task): Task | null {
-    const tasks = this.getTasks();
-    const index = tasks.findIndex((t) => t.id === updatedTask.id);
-
-    if (index !== -1) {
-      tasks[index] = updatedTask;
-      this.saveTasks(tasks);
-      return updatedTask;
-    }
-
-    return null;
-  }
-
-  static deleteTask(id: string): boolean {
-    const tasks = this.getTasks();
-    const filteredTasks = tasks.filter((t) => t.id !== id);
-
-    if (tasks.length !== filteredTasks.length) {
-      this.saveTasks(filteredTasks);
-      return true;
-    }
-
-    return false;
+  static async deleteTask(id: string): Promise<void> {
+    const taskDoc = doc(db, 'tasks', id).withConverter(taskConverter);
+    await deleteDoc(taskDoc);
   }
 }
 

@@ -8,6 +8,7 @@ import TaskForm from './components/TaskForm';
 import TaskDetails from './components/TaskDetails';
 import NavBar from './components/NavBar';
 import LoginForm from './components/LoginForm';
+import RegisterForm from './components/RegisterForm';
 import ProjectService from './services/ProjectService';
 import StoryService from './services/StoryService';
 import TaskService from './services/TaskService';
@@ -18,6 +19,8 @@ import { Project } from './interfaces/Project';
 import { Story } from './interfaces/Story';
 import { Task } from './interfaces/Task';
 import { User } from './interfaces/User';
+import { auth } from './firebaseConfig';
+import './index.css';
 
 const App: React.FC = () => {
   const [projects, setProjects] = useState<Project[]>([]);
@@ -40,41 +43,64 @@ const App: React.FC = () => {
   const [refreshToken, setRefreshToken] = useState<string | null>(
     localStorage.getItem('refreshToken')
   );
+  const [showRegister, setShowRegister] = useState<boolean>(false);
+
+  useEffect(() => {
+    const fetchUserData = async (userId: string) => {
+      const fetchedUser = await UserService.getUserById(userId);
+      if (fetchedUser) {
+        setLoggedInUser(fetchedUser);
+      }
+    };
+
+    auth.onAuthStateChanged((firebaseUser) => {
+      if (firebaseUser) {
+        fetchUserData(firebaseUser.uid);
+        firebaseUser.getIdToken().then(setToken);
+        setRefreshToken(firebaseUser.refreshToken);
+      }
+    });
+  }, []);
 
   useEffect(() => {
     if (token) {
-      UserService.mockUsers();
-      UserService.mockLoggedInUser();
-      setLoggedInUser(UserService.getLoggedInUser());
-      setProjects(ProjectService.getProjects());
-      setUsers(UserService.getUsers());
+      ProjectService.getProjects().then(setProjects);
+      UserService.getUsers().then(setUsers);
       const savedActiveProjectId = ActiveProjectService.getActiveProject();
       setActiveProjectId(savedActiveProjectId);
       if (savedActiveProjectId) {
-        const filteredStories = StoryService.getStories().filter(
-          (story) => story.projectId === savedActiveProjectId
-        );
-        setStories(filteredStories);
-        setTasks(
-          TaskService.getTasks().filter((task) =>
-            filteredStories.some((story) => story.id === task.storyId)
-          )
-        );
+        StoryService.getStories().then((filteredStories) => {
+          setStories(
+            filteredStories.filter(
+              (story) => story.projectId === savedActiveProjectId
+            )
+          );
+          TaskService.getTasks().then((tasks) =>
+            setTasks(
+              tasks.filter((task) =>
+                filteredStories.some((story) => story.id === task.storyId)
+              )
+            )
+          );
+        });
       }
     }
   }, [token]);
 
   useEffect(() => {
     if (activeProjectId) {
-      const filteredStories = StoryService.getStories().filter(
-        (story) => story.projectId === activeProjectId
-      );
-      setStories(filteredStories);
-      setTasks(
-        TaskService.getTasks().filter((task) =>
-          filteredStories.some((story) => story.id === task.storyId)
-        )
-      );
+      StoryService.getStories().then((filteredStories) => {
+        setStories(
+          filteredStories.filter((story) => story.projectId === activeProjectId)
+        );
+        TaskService.getTasks().then((tasks) =>
+          setTasks(
+            tasks.filter((task) =>
+              filteredStories.some((story) => story.id === task.storyId)
+            )
+          )
+        );
+      });
     }
   }, [activeProjectId]);
 
@@ -89,24 +115,27 @@ const App: React.FC = () => {
           handleLogout();
         }
       }
-    }, 15 * 60 * 1000); // co 15 minut odświezenie tokenu
+    }, 15 * 60 * 1000); // odswieza token co 15 min
 
     return () => clearInterval(interval);
   }, [refreshToken]);
 
-  const handleSaveProject = (project: Project) => {
+  const handleSaveProject = async (project: Project) => {
     if (editingProject) {
-      ProjectService.updateProject(project);
+      await ProjectService.updateProject(project);
       setEditingProject(undefined);
     } else {
-      ProjectService.createProject(project);
+      const projectRef = await ProjectService.createProject(project);
+      project.id = projectRef.id;
     }
-    setProjects(ProjectService.getProjects());
+    const updatedProjects = await ProjectService.getProjects();
+    setProjects(updatedProjects);
   };
 
-  const handleDeleteProject = (id: string) => {
-    ProjectService.deleteProject(id);
-    setProjects(ProjectService.getProjects());
+  const handleDeleteProject = async (id: string) => {
+    await ProjectService.deleteProject(id);
+    const updatedProjects = await ProjectService.getProjects();
+    setProjects(updatedProjects);
     setEditingProject(undefined);
     if (activeProjectId === id) {
       ActiveProjectService.clearActiveProject();
@@ -129,20 +158,20 @@ const App: React.FC = () => {
     setViewingTask(undefined);
   };
 
-  const handleSaveStory = (story: Story) => {
+  const handleSaveStory = async (story: Story) => {
     if (editingStory) {
-      StoryService.updateStory(story);
+      await StoryService.updateStory(story);
       setEditingStory(undefined);
     } else {
-      StoryService.createStory(story);
+      const storyRef = await StoryService.createStory(story);
+      story.id = storyRef.id;
     }
-    setStories(
-      StoryService.getStories().filter((s) => s.projectId === story.projectId)
-    );
+    const updatedStories = await StoryService.getStories();
+    setStories(updatedStories.filter((s) => s.projectId === story.projectId));
   };
 
-  const handleDeleteStory = (id: string) => {
-    StoryService.deleteStory(id);
+  const handleDeleteStory = async (id: string) => {
+    await StoryService.deleteStory(id);
     setStories(stories.filter((story) => story.id !== id));
     setEditingStory(undefined);
   };
@@ -151,22 +180,22 @@ const App: React.FC = () => {
     setEditingStory(story);
   };
 
-  const handleSaveTask = (task: Task) => {
+  const handleSaveTask = async (task: Task) => {
     if (editingTask) {
-      TaskService.updateTask(task);
+      await TaskService.updateTask(task);
       setEditingTask(undefined);
     } else {
-      TaskService.createTask(task);
+      const taskRef = await TaskService.createTask(task);
+      task.id = taskRef.id;
     }
+    const updatedTasks = await TaskService.getTasks();
     setTasks(
-      TaskService.getTasks().filter((t) =>
-        stories.some((s) => s.id === t.storyId)
-      )
+      updatedTasks.filter((t) => stories.some((s) => s.id === t.storyId))
     );
   };
 
-  const handleDeleteTask = (id: string) => {
-    TaskService.deleteTask(id);
+  const handleDeleteTask = async (id: string) => {
+    await TaskService.deleteTask(id);
     setTasks(tasks.filter((task) => task.id !== id));
     setEditingTask(undefined);
   };
@@ -179,47 +208,77 @@ const App: React.FC = () => {
     setViewingTask(task);
   };
 
-  const handleAssignTask = (task: Task, userId: string) => {
+  const handleAssignTask = async (task: Task, userId: string) => {
+    if (!task.id) {
+      console.error('Task must have an ID before it can be updated');
+      return;
+    }
     const updatedTask: Task = {
       ...task,
       assigneeId: userId,
       status: 'in progress',
       startDate: new Date().toISOString(),
     };
-    TaskService.updateTask(updatedTask);
+    await TaskService.updateTask(updatedTask);
+    const updatedTasks = await TaskService.getTasks();
     setTasks(
-      TaskService.getTasks().filter((t) =>
-        stories.some((s) => s.id === t.storyId)
-      )
+      updatedTasks.filter((t) => stories.some((s) => s.id === t.storyId))
     );
     setViewingTask(undefined);
   };
 
-  const handleCompleteTask = (task: Task) => {
+  const handleCompleteTask = async (task: Task) => {
+    if (!task.id) {
+      console.error('Task must have an ID before it can be updated');
+      return;
+    }
     const updatedTask: Task = {
       ...task,
       status: 'done',
       endDate: new Date().toISOString(),
     };
-    TaskService.updateTask(updatedTask);
+    await TaskService.updateTask(updatedTask);
+    const updatedTasks = await TaskService.getTasks();
     setTasks(
-      TaskService.getTasks().filter((t) =>
-        stories.some((s) => s.id === t.storyId)
-      )
+      updatedTasks.filter((t) => stories.some((s) => s.id === t.storyId))
     );
     setViewingTask(undefined);
   };
 
-  const handleLogin = (token: string, refreshToken: string) => {
+  const handleLogin = async (token: string, refreshToken: string) => {
     setToken(token);
     setRefreshToken(refreshToken);
     localStorage.setItem('token', token);
     localStorage.setItem('refreshToken', refreshToken);
+
+    const user = auth.currentUser;
+    if (user) {
+      const fetchedUser = await UserService.getUserById(user.uid);
+      if (fetchedUser) {
+        setLoggedInUser(fetchedUser);
+      }
+    }
+  };
+
+  const handleRegister = async (token: string, refreshToken: string) => {
+    setToken(token);
+    setRefreshToken(refreshToken);
+    localStorage.setItem('token', token);
+    localStorage.setItem('refreshToken', refreshToken);
+
+    const user = auth.currentUser;
+    if (user) {
+      const fetchedUser = await UserService.getUserById(user.uid);
+      if (fetchedUser) {
+        setLoggedInUser(fetchedUser);
+      }
+    }
   };
 
   const handleLogout = () => {
     setToken(null);
     setRefreshToken(null);
+    setLoggedInUser(null);
     localStorage.removeItem('token');
     localStorage.removeItem('refreshToken');
   };
@@ -265,7 +324,33 @@ const App: React.FC = () => {
   );
 
   if (!token) {
-    return <LoginForm onLogin={handleLogin} />;
+    return showRegister ? (
+      <div>
+        <RegisterForm onRegister={handleRegister} />
+        <p className="mt-4">
+          Already have an account?{' '}
+          <button
+            onClick={() => setShowRegister(false)}
+            className="text-blue-500"
+          >
+            Login
+          </button>
+        </p>
+      </div>
+    ) : (
+      <div>
+        <LoginForm onLogin={handleLogin} />
+        <p className="mt-4">
+          Don't have an account?{' '}
+          <button
+            onClick={() => setShowRegister(true)}
+            className="text-blue-500"
+          >
+            Register
+          </button>
+        </p>
+      </div>
+    );
   }
 
   return (
