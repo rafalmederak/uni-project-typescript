@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import notificationService from '../services/NotificationService';
 import { Notification } from '../interfaces/Notification';
-import { IoMdNotificationsOutline } from 'react-icons/io'; // Importuj ikonę powiadomień
+import { IoMdNotificationsOutline } from 'react-icons/io';
 
 const NotificationList: React.FC = () => {
   const [notifications, setNotifications] = useState<Notification[]>([]);
@@ -27,7 +27,7 @@ const NotificationList: React.FC = () => {
     <div className="fixed top-0 right-0 p-4 z-50">
       <button
         onClick={() => setShowNotifications(!showNotifications)}
-        className="relative p-2 bg-blue-500 text-white rounded-full"
+        className="relative p-2 bg-blue-500 text-white rounded-full z-50"
       >
         <IoMdNotificationsOutline size={24} />
         {unreadCount > 0 && (
@@ -37,7 +37,7 @@ const NotificationList: React.FC = () => {
         )}
       </button>
       {showNotifications && (
-        <div className="fixed top-12 right-0 h-full w-80 bg-white dark:bg-gray-800 shadow-lg p-4 overflow-y-auto">
+        <div className="fixed top-[72px] right-0 h-full w-80 bg-white dark:bg-gray-800 shadow-lg p-4 overflow-y-auto">
           <h2 className="text-xl font-bold mb-4">Notifications</h2>
           <ul>
             {notifications.map((notification, index) => (

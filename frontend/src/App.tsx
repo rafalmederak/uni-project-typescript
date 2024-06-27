@@ -369,16 +369,10 @@ const App: React.FC = () => {
         )
       ) : (
         <>
-          <NavBar loggedInUser={loggedInUser} />
+          <NavBar loggedInUser={loggedInUser} onLogout={handleLogout} />
           <NotificationList />
           <div className="container mx-auto p-4">
             <h1 className="text-2xl font-bold mb-4">Project Management</h1>
-            <button
-              onClick={handleLogout}
-              className="mb-4 p-2 bg-red-500 text-white rounded"
-            >
-              Logout
-            </button>
             <div className="mb-4">
               <ProjectForm
                 project={editingProject}
