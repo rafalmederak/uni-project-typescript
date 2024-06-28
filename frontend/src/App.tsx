@@ -289,7 +289,8 @@ const App: React.FC = () => {
     }
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    await auth.signOut();
     setToken(null);
     setRefreshToken(null);
     setLoggedInUser(null);
@@ -341,7 +342,7 @@ const App: React.FC = () => {
     <div>
       {!token ? (
         showRegister ? (
-          <div>
+          <div className="h-[100vh] flex items-center justify-center flex-col w-100">
             <RegisterForm onRegister={handleRegister} />
             <p className="mt-4">
               Already have an account?{' '}
@@ -354,7 +355,7 @@ const App: React.FC = () => {
             </p>
           </div>
         ) : (
-          <div>
+          <div className="h-[100vh] flex items-center justify-center flex-col w-100">
             <LoginForm onLogin={handleLogin} />
             <p className="mt-4">
               Don't have an account?{' '}

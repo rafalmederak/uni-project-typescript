@@ -43,7 +43,7 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onRegister }) => {
   return (
     <form
       onSubmit={handleSubmit}
-      className="max-w-md mx-auto p-4 border rounded shadow-md"
+      className="w-[80%] max-w-md mx-auto p-4 border rounded shadow-md"
     >
       <h2 className="text-xl font-bold mb-4">Register</h2>
       {error && <div className="text-red-500 mb-4">{error}</div>}
